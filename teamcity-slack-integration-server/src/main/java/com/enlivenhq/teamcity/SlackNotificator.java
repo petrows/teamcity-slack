@@ -21,7 +21,10 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
+import jetbrains.buildServer.users.UserSet;
+import jetbrains.buildServer.vcs.SelectPrevBuildPolicy;
 
 public class SlackNotificator implements Notificator {
 
@@ -52,34 +55,58 @@ public class SlackNotificator implements Notificator {
     @NotNull
     public String getDisplayName() {
         return "Slack Notifier";
-    }
+	}
+
+	private String formateBuildName(@NotNull SBuild sBuild) {
+		StringBuilder displayName = new StringBuilder();
+		displayName.append(sBuild.getFullName());
+		if (sBuild.getTriggeredBy().isTriggeredByUser()) {
+			displayName.append(" (Manual,");
+			displayName.append(sBuild.getTriggeredBy().getUser().getUsername());
+			displayName.append(")");
+		} else {
+			displayName.append(" (");
+			displayName.append(sBuild.getTriggeredBy().getAsString());
+
+			Set<SUser> users = sBuild.getCommitters(SelectPrevBuildPolicy.SINCE_LAST_BUILD).getUsers();
+			List<SUser> usersList = new ArrayList<SUser>(users);
+			if (usersList.size() > 0) {
+				for (SUser sUser : usersList) {
+					displayName.append(",");
+					displayName.append(sUser.getUsername());
+				}
+			}
+			displayName.append(")");
+		}
+		return displayName.toString();
+	}
 
     public void notifyBuildFailed(@NotNull SRunningBuild sRunningBuild, @NotNull Set<SUser> users) {
-         sendNotification(sRunningBuild.getFullName(), sRunningBuild.getBuildNumber(), "failed: " + sRunningBuild.getStatusDescriptor().getText(), "danger", users, sRunningBuild);
+		sendNotification(formateBuildName(sRunningBuild), sRunningBuild.getBuildNumber(), "failed: " + sRunningBuild.getStatusDescriptor().getText(), "danger", users, sRunningBuild);
     }
 
     public void notifyBuildFailedToStart(@NotNull SRunningBuild sRunningBuild, @NotNull Set<SUser> users) {
-        sendNotification(sRunningBuild.getFullName(), sRunningBuild.getBuildNumber(), "failed to start", "danger", users, sRunningBuild);
+		sendNotification(formateBuildName(sRunningBuild), sRunningBuild.getBuildNumber(), "failed to start", "danger", users, sRunningBuild);
     }
 
     public void notifyBuildSuccessful(@NotNull SRunningBuild sRunningBuild, @NotNull Set<SUser> users) {
-        sendNotification(sRunningBuild.getFullName(), sRunningBuild.getBuildNumber(), "built successfully", "good", users, sRunningBuild);
+		sendNotification(formateBuildName(sRunningBuild), sRunningBuild.getBuildNumber(), "built successfully", "good", users, sRunningBuild);
     }
 
     public void notifyLabelingFailed(@NotNull Build build, @NotNull VcsRoot vcsRoot, @NotNull Throwable throwable, @NotNull Set<SUser> sUsers) {
-        sendNotification(build.getFullName(), build.getBuildNumber(), "labeling failed", "danger", sUsers, build);
+		sendNotification(build.getFullName(), build.getBuildNumber(), "labeling failed", "danger", sUsers, build);
     }
 
     public void notifyBuildFailing(@NotNull SRunningBuild sRunningBuild, @NotNull Set<SUser> sUsers) {
-        sendNotification(sRunningBuild.getFullName(), sRunningBuild.getBuildNumber(), "failing", "danger", sUsers, sRunningBuild);
+		sendNotification(formateBuildName(sRunningBuild), sRunningBuild.getBuildNumber(), "failing", "danger", sUsers, sRunningBuild);
     }
 
     public void notifyBuildProbablyHanging(@NotNull SRunningBuild sRunningBuild, @NotNull Set<SUser> sUsers) {
-        sendNotification(sRunningBuild.getFullName(), sRunningBuild.getBuildNumber(), "probably hanging", "warning", sUsers, sRunningBuild);
+		sendNotification(formateBuildName(sRunningBuild), sRunningBuild.getBuildNumber(), "probably hanging", "warning", sUsers, sRunningBuild);
     }
 
     public void notifyBuildStarted(@NotNull SRunningBuild sRunningBuild, @NotNull Set<SUser> sUsers) {
-        sendNotification(sRunningBuild.getFullName(), sRunningBuild.getBuildNumber(), "started", "warning", sUsers, sRunningBuild);
+		sendNotification(formateBuildName(sRunningBuild), sRunningBuild.getBuildNumber(), "started", "warning", sUsers, sRunningBuild);
     }
 
     public void notifyResponsibleChanged(@NotNull SBuildType sBuildType, @NotNull Set<SUser> sUsers) {
